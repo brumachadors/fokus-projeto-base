@@ -1,11 +1,22 @@
 // Encontrar o botão adicionar tarefa
 
 const btnAddTask = document.querySelector('.app__button--add-task')
+const btnCancel = document.querySelector('.app__form-footer__button--cancel');
 const formAddTask = document.querySelector('.app__form-add-task')
 const textArea = document.querySelector('.app__form-textarea')
 const ulTasks = document.querySelector('.app__section-task-list')
+const paragraphDescription = document.querySelector('.app__section-active-task-description')
 
-const tasks = JSON.parse(localStorage.getItem('tasks')) || [] // Parse é o inverso do stringfy
+const btnRemoveCompleted = document.querySelector('#btn-remover-concluidas')
+const btnRemoveAll = document.querySelector('#btn-remover-todas')
+
+let tasks = JSON.parse(localStorage.getItem('tasks')) || [] // Parse é o inverso do stringfy
+let selectedTask = null
+let liSelectedTask = null
+
+function updateTasks() {
+    localStorage.setItem('tasks', JSON.stringify(tasks))
+}
 
 function createTaskElement(task) {
     const li = document.createElement('li')
@@ -27,6 +38,18 @@ function createTaskElement(task) {
     const buttonImage = document.createElement('img')
     button.classList.add('app_button-edit')
 
+    button.onclick = () => {
+        const newDescription = prompt("Qual é o novo nome da tarefa?")
+        if (newDescription) {
+            paragraph.textContent = newDescription
+            task.description = newDescription
+            updateTasks()
+        }
+        else {
+            alert('Insira um título para a tarefa!')
+        }
+    }
+
     buttonImage.setAttribute('src', '/imagens/edit.png')
 
     button.append(buttonImage)
@@ -34,6 +57,31 @@ function createTaskElement(task) {
     li.append(svg)
     li.append(paragraph)
     li.append(button)
+
+    if (task.completed) {
+        li.classList.remove('app__section-task-list-item-active')
+        button.setAttribute('disabled', 'disabled')
+    }
+    else {
+        li.onclick = () => {
+            document.querySelectorAll('.app__section-task-list-item-active')
+                .forEach(element => {
+                    element.classList.remove('app__section-task-list-item-active')
+                })
+
+            if (selectedTask == task) {
+                paragraphDescription.textContent = ''
+                selectedTask = null
+                liSelectedTask = null
+                return
+            }
+            selectedTask = task
+            liSelectedTask = li
+            paragraphDescription.textContent = task.description
+
+            li.classList.add('app__section-task-list-item-active')
+        }
+    }
 
     return li
 }
@@ -50,12 +98,46 @@ formAddTask.addEventListener('submit', (event) => {
     tasks.push(task)
     const taskElement = createTaskElement(task)
     ulTasks.append(taskElement)
-    localStorage.setItem('tasks', JSON.stringify(tasks))
+    // localStorage.setItem('tasks', JSON.stringify(tasks))
+    updateTasks()
     textArea.value = ''
     formAddTask.classList.add('hidden')
 })
 
 tasks.forEach(task => {
     const taskElement = createTaskElement(task)
-    ulTasks.append(taskElement)    
+    ulTasks.append(taskElement)
 });
+
+const clearForm = () => {
+    textArea.value = '';
+    formAddTask.classList.add('hidden');
+}
+
+btnCancel.addEventListener('click', clearForm);
+
+document.addEventListener('FocoFinalizado', () => {
+    if (selectedTask && liSelectedTask) {
+        liSelectedTask.classList.remove('app__section-task-list-item-active')
+        liSelectedTask.classList.add('app__section-task-list-item-complete')
+        liSelectedTask.querySelector('button').setAttribute('disabled', 'disabled')
+        selectedTask.complete = true
+        updateTasks()
+    }
+});
+
+const removeTasks = (onlyCompleted) => {
+    // const selector = onlyCompleted ? ".app__section-task-list-item-complete": ".app__section-task-list-item"
+    let selector = ".app__section-task-list-item"
+    if (onlyCompleted) {
+        selector = ".app__section-task-list-item-complete"
+    }
+    document.querySelectorAll(selector).forEach(elemento => {
+        elemento.remove()
+    })
+    tasks = onlyCompleted ? tasks.filter(task => !task.complete) : []
+    updateTasks()
+}
+
+btnRemoveCompleted.onclick = () => removeTasks(true)
+btnRemoveAll.onclick = () => removeTasks(false)
